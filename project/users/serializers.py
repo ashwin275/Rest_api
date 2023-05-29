@@ -27,3 +27,10 @@ class UserSeriliazer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+    
+
+
+class UserLIstSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id','username','email']
