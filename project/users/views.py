@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from .models import CustomUser
 import jwt , datetime
+from rest_framework import status
 from rest_framework.exceptions import NotFound
 # Create your views here.
 
@@ -25,6 +26,7 @@ class LoginView(APIView):
 
         try:
             user = CustomUser.objects.get(email=email)
+            print(user)
         except CustomUser.DoesNotExist:
             raise AuthenticationFailed('User not found')
         
@@ -57,8 +59,16 @@ class LoginView(APIView):
 
 
 class UserView(APIView):
+    def get_object(self, pk):
+        try:
+            return CustomUser.objects.get(id=pk)
+        except CustomUser.DoesNotExist:
+            raise NotFound('User not found')
+        
+
     def get(self, request):
         token = request.headers.get('Authorization')
+        print(token)
         if not token:
             raise AuthenticationFailed('Unauthenticated!')
         try:
@@ -78,6 +88,17 @@ class UserView(APIView):
 
         except (jwt.DecodeError, CustomUser.DoesNotExist):
             raise AuthenticationFailed('Unauthenticated!')
+        
+
+
+    def patch(self,request,pk):
+        user = self.get_object(pk)
+        serializer = UserLIstSerializer(user,data=request.data,partial = True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        
+        return Response(serializer.errors,status=status.HTTP_404_NOT_FOUND)
 
     
 
@@ -94,9 +115,24 @@ class Logoutview(APIView):
         return response
     
 
-class UserListview(APIView):
+
+        
+
+
+   
+
+
+class adminView(APIView):
+    def get_object(self, pk):
+        try:
+            return CustomUser.objects.get(id=pk)
+        except CustomUser.DoesNotExist:
+            raise NotFound('User not found')
+        
+
     def get(self,request):
         token = request.headers.get('Authorization')
+       
 
         if not token:
             raise AuthenticationFailed('Unauthenticated!')
@@ -104,9 +140,11 @@ class UserListview(APIView):
         try:
            
             token = token.split(' ')[1]
+            print(token,'token')
             payload = jwt.decode(token, 'secret', algorithms=['HS256'])
 
             user = CustomUser.objects.get(id=payload['id'])
+
             print(user.is_superuser,'admin')
             
             serializer = None
@@ -120,23 +158,47 @@ class UserListview(APIView):
                 return Response(serializer.data)
 
         except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed('Unauthenticated!')
+            raise AuthenticationFailed('Unauthenticated! expired')
 
         except (jwt.DecodeError, CustomUser.DoesNotExist):
-            raise AuthenticationFailed('Unauthenticated!')
-
-
-class UserEditView(APIView):
-    def get_object(self, pk):
-        try:
-            return CustomUser.objects.get(id=pk)
-        except CustomUser.DoesNotExist:
-            raise NotFound('User not found')
+            raise AuthenticationFailed('Unauthenticated! decode error')
         
 
-    def delete(self,pk):
+    def delete(self,request,pk):
        
         user = self.get_object(pk)
         user.delete()
         return Response({'message':'user deleted Succesfully'})
+    
+
+    def put(self,request,pk):
+        user = self.get_object(pk)
+        serializer = UserLIstSerializer(user,data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        
+        return Response(serializer.errors,status=400)
+    
+
+    def patch(self,request,pk):
+        user = self.get_object(pk)
+
+        action = request.data.get('action',None)
+
+        if action is not None:
+            user.is_active = action
+            user.save()
+
+            serializer = UserLIstSerializer(user)
+
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors,status=400)
+
+
+        
+    
+
+    
 

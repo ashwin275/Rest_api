@@ -33,4 +33,14 @@ class UserSeriliazer(serializers.ModelSerializer):
 class UserLIstSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id','username','email']
+        fields = ['id','username','email','profile']
+
+
+        def update(self,instance,validated_data):
+            image = validated_data.pop('profile',None)
+            instance = super().update(instance,validated_data)
+
+            if image:
+                instance.image = image
+                instance.save()
+                return instance
